@@ -8,6 +8,10 @@
  * Each connecting WebSocket client receives the full state on webviewReady.
  */
 
+// Side-effect import: redirect console -> logfile BEFORE anything logs, so an
+// undrained host stdout pipe can never deadlock the event loop. Keep first.
+import './logRedirect.js';
+
 import * as path from 'path';
 
 import { AgentRuntime } from './agentRuntime.js';
@@ -128,19 +132,25 @@ async function main(): Promise<void> {
     runtime.hooksEnabled.current = adapter.getSetting('pixel-agents.hooksEnabled', true);
     runtime.watchAllSessions.current = adapter.getSetting('pixel-agents.watchAllSessions', false);
 
+    // Always copy the hook script so the path in settings.json stays valid even
+    // when hooks are toggled off and back on without restarting.
+    copyHookScript(distRoot);
+
     // Install hooks on startup if the persisted setting says so
     if (runtime.hooksEnabled.current) {
       try {
         await claudeProvider.installHooks(`http://127.0.0.1:${config.port}`, config.token);
-        copyHookScript(distRoot);
         console.log('[Pixel Agents] Hooks installed');
       } catch (err) {
         console.error('[Pixel Agents] Failed to install hooks:', err);
       }
     }
 
-    // Start scanning for external sessions (Claude running in user's terminal)
-    const cwd = process.cwd();
+    // Start scanning for external sessions (Claude running in user's terminal).
+    // The host (e.g. JetBrains plugin) may launch us from a neutral working dir
+    // — to dodge npm exec resolving a same-named local package — and pass the
+    // real project via PIXEL_AGENTS_PROJECT_DIR. Fall back to cwd otherwise.
+    const cwd = process.env.PIXEL_AGENTS_PROJECT_DIR || process.cwd();
     const dirs = claudeProvider.getSessionDirs?.(cwd);
     if (dirs && dirs[0]) {
       const projectDir = dirs[0];

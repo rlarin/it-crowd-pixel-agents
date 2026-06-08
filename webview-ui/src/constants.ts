@@ -17,6 +17,8 @@ export const WANDER_MOVES_BEFORE_REST_MIN = 3;
 export const WANDER_MOVES_BEFORE_REST_MAX = 6;
 export const SEAT_REST_MIN_SEC = 120.0;
 export const SEAT_REST_MAX_SEC = 240.0;
+/** Seconds of idle (inactive) time before the character is hidden from the canvas */
+export const IDLE_HIDE_SEC = 4 * 3600;
 
 // ── Matrix Effect ────────────────────────────────────────────
 export const MATRIX_EFFECT_DURATION_SEC = 0.3;
@@ -87,6 +89,10 @@ export const ZOOM_LEVEL_HIDE_DELAY_MS = 2000;
 export const ZOOM_LEVEL_FADE_DURATION_SEC = 0.5;
 export const ZOOM_SCROLL_THRESHOLD = 50;
 export const PAN_MARGIN_FRACTION = 0.25;
+
+// ── Startup ──────────────────────────────────────────────────
+/** How long to wait for the first layout before showing a connection error instead of "Loading…". */
+export const STARTUP_TIMEOUT_MS = 25000;
 
 // ── Editor ───────────────────────────────────────────────────
 export const UNDO_STACK_MAX_SIZE = 50;

@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "com.pixelagents"
-version = "0.1.0"
+version = "0.3.7"
 
 repositories {
     mavenCentral()
@@ -38,7 +38,7 @@ intellijPlatform {
     pluginConfiguration {
         id = "io.github.rlarin.pixelagents"
         name = "IT Crowd Pixel Agents"
-        version = "0.1.0"
+        version = "0.3.7"
         description = """
             JetBrains edition of Pixel Agents — a pixel art office where AI agents (Claude Code terminals)
             are animated characters you can watch work in real time.
@@ -48,8 +48,55 @@ intellijPlatform {
 
             Based on Pixel Agents by Pablo De Lucca (https://github.com/pixel-agents-hq/pixel-agents), MIT licensed.
         """.trimIndent()
+        changeNotes = """
+            <h3>0.3.7</h3>
+            <ul>
+                <li><b>Idle agents walk to the rest area</b> — when an agent finishes a turn it now walks to a non-work seat (couch, lounge chair — any chair not facing a screen) if one is free, instead of wandering aimlessly around the office.</li>
+                <li><b>Long-idle agents disappear</b> — agents that have been inactive for 4 hours are hidden from the canvas. They reappear immediately the moment Claude picks up a new task.</li>
+                <li><b>Fix: "Cannot find module …claude-hook.js"</b> — the hook script is now always copied to <code>~/.pixel-agents/hooks/</code> on startup, so the path registered in <code>~/.claude/settings.json</code> is never stale even after a reinstall or a hooks toggle.</li>
+            </ul>
+            <h3>0.3.6</h3>
+            <ul>
+                <li><b>Fix: "Node.js not found" on macOS even when Node is installed</b> — a GUI-launched IDE inherits only a minimal PATH that excludes Homebrew, nvm, fnm and volta. The background server is now launched through your login shell, so it sees Node exactly as your terminal does.</li>
+            </ul>
+            <h3>0.3.5</h3>
+            <ul>
+                <li><b>Fix: tool window froze on "Loading…" after a while</b> — the background server's output is now written to a log file instead of an undrained pipe. Previously the pipe's buffer could fill and block the server's event loop, leaving it alive but unresponsive. Server logs are now at <code>~/.pixel-agents/server.log</code>.</li>
+            </ul>
+            <h3>0.3.4</h3>
+            <ul>
+                <li><b>Fix: server failed to start in some projects</b> — the background server is now launched from a neutral directory, so it no longer fails when the open project happens to share a name with an npm package. The real project is still scanned correctly.</li>
+                <li><b>Clear startup errors</b> — if the background server can't start (e.g. Node.js not installed), the panel now shows a helpful message and a Retry instead of an endless "Loading…".</li>
+            </ul>
+            <h3>0.3.3</h3>
+            <ul>
+                <li><b>Fix: stuck on "Loading…"</b> — the tool window no longer hangs when a stale or hung background server is left behind by a previous run. The server is now health-checked before being reused, and a fresh one is started (on a free port) when needed.</li>
+            </ul>
+            <h3>0.3.2</h3>
+            <ul>
+                <li><b>Fix: Export Layout now works</b> — previously clicking Export Layout in Settings did nothing in JetBrains. It now opens a native save dialog and writes the current layout to a JSON file.</li>
+                <li><b>Fix: Import Layout now works</b> — previously clicking Import Layout in Settings did nothing in JetBrains. It now opens a native file picker, validates the selected layout, and applies it immediately.</li>
+                <li><b>Fix: Open Sessions Folder now works</b> — it now reveals the Claude sessions folder for the current project in your OS file manager.</li>
+            </ul>
+            <h3>0.3.1</h3>
+            <ul>
+                <li><b>New app icon</b> — fresh pixel-art office illustration used as the extension icon.</li>
+                <li><b>Custom toolbar icon</b> — dedicated SVG icon now appears in the JetBrains tool window tab instead of the generic window icon.</li>
+            </ul>
+            <h3>0.3.0</h3>
+            <ul>
+                <li>Tool window title set to "IT Crowd" with a real plugin icon.</li>
+                <li>Manual refresh button for agents and office view.</li>
+                <li>Widened <code>untilBuild</code> to 261.* for IntelliJ 2026.1 compatibility.</li>
+            </ul>
+            <h3>0.2.0</h3>
+            <ul>
+                <li>Initial JetBrains plugin release with embedded browser panel, Claude Code terminal integration, and standalone server.</li>
+            </ul>
+        """.trimIndent()
         ideaVersion {
             sinceBuild = "251"
+            untilBuild = "261.*"
         }
     }
     publishing {

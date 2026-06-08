@@ -30,13 +30,28 @@ class ServerManager(
     },
     private val processLauncher: (String) -> Process = { dir ->
         val cmd = if (System.getProperty("os.name").startsWith("Windows"))
-            listOf("cmd", "/c", "npx", "it-crowd-pixel-agents")
+            listOf("cmd", "/c", "npx", "-y", "it-crowd-pixel-agents")
         else
-            listOf("npx", "it-crowd-pixel-agents")
-        ProcessBuilder(cmd)
-            .directory(File(dir))
+            listOf("npx", "-y", "it-crowd-pixel-agents")
+        // Run npx from a neutral directory (user home), NOT the project dir:
+        // if the open project itself is the "it-crowd-pixel-agents" package
+        // (e.g. its own repo), `npm exec` resolves the local package and fails
+        // with "is not recognized", so the server never starts. The real
+        // project is passed to the server via PIXEL_AGENTS_PROJECT_DIR instead.
+        //
+        // Redirect the child's stdout+stderr to a logfile (NOT an inherited
+        // pipe). We never drain the child's output, so an undrained pipe would
+        // fill its ~64KB OS buffer and block Node's synchronous stdout writes,
+        // freezing the server event loop (alive PID, dead HTTP) — the classic
+        // "stuck on Loading..." failure. A file sink can never back-pressure.
+        val logFile = File(System.getProperty("user.home"), ".pixel-agents/server.log")
+        logFile.parentFile?.mkdirs()
+        val pb = ProcessBuilder(cmd)
+            .directory(File(System.getProperty("user.home")))
             .redirectErrorStream(true)
-            .start()
+            .redirectOutput(ProcessBuilder.Redirect.to(logFile))
+        pb.environment()["PIXEL_AGENTS_PROJECT_DIR"] = dir
+        pb.start()
     },
     private val healthChecker: (Int) -> Boolean = { port ->
         try {
@@ -61,14 +76,24 @@ class ServerManager(
     val serverPort: Int get() = portFuture.getNow(DEFAULT_PORT)
 
     fun start() {
-        val existing = readServerJson()
-        if (existing != null && processAliveChecker(existing.pid)) {
-            config = existing
-            log.info("Pixel Agents server already running on port ${existing.port}")
-            portFuture.complete(existing.port)
-            return
-        }
-        executor(Runnable { launchServer() })
+        // Health-check off the EDT: a hung server (alive PID, dead HTTP) or a
+        // stale server.json from a crash would otherwise be trusted blindly,
+        // leaving the embedded browser stuck on "Loading..." forever.
+        executor(Runnable {
+            val existing = readServerJson()
+            if (existing != null && processAliveChecker(existing.pid) && healthChecker(existing.port)) {
+                config = existing
+                log.info("Reusing healthy Pixel Agents server on port ${existing.port}")
+                portFuture.complete(existing.port)
+                return@Runnable
+            }
+            if (existing != null) {
+                log.info(
+                    "Ignoring stale/unhealthy server.json (PID ${existing.pid}, port ${existing.port}); launching fresh server"
+                )
+            }
+            launchServer()
+        })
     }
 
     private fun readServerJson(): ServerConfig? {
